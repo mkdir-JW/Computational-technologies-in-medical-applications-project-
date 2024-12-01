@@ -50,7 +50,6 @@ def get_items():
 
 # Generowanie kodu QR
 def generate_qr(item_id):
-    # Pobranie klucza z pliku
     with open("key.txt", "r") as key_file:
         key = key_file.read()
 
@@ -64,12 +63,14 @@ def generate_qr(item_id):
     img.save(file_path)
     print(f"Kod QR zapisany w: {file_path}")
 
+# Funkcja do skanowania QR i wyświetlania szczegółowych informacji o przedmiocie
 def scan_qr():
     conn = sqlite3.connect('inventory.db')
     cursor = conn.cursor()
     cursor.execute("SELECT key FROM encryption_key LIMIT 1")
     key_in_db = cursor.fetchone()[0]
     conn.close()
+    
     with open("key.txt", "r") as key_file:
         key_in_file = key_file.read()
 
@@ -91,16 +92,12 @@ def scan_qr():
             if qr_key == key_in_db == key_in_file:
                 conn = sqlite3.connect('inventory.db')
                 cursor = conn.cursor()
-                cursor.execute("SELECT name, category, location FROM items WHERE id = ?", (item_id,))
+                cursor.execute("SELECT id, name, category, quantity, location FROM items WHERE id = ?", (item_id,))
                 item_data = cursor.fetchone()
                 conn.close()
 
                 if item_data:
-                    name, category, location = item_data
-                    messagebox.showinfo(
-                        "QR Weryfikacja",
-                        f"Poprawny klucz!\nID: {item_id}\nNazwa: {name}\nKategoria: {category}\nLokalizacja: {location}"
-                    )
+                    show_item_details(item_data)  
                 else:
                     messagebox.showerror("Błąd", "Nie znaleziono przedmiotu o podanym ID!")
             else:
@@ -112,6 +109,23 @@ def scan_qr():
             break
     cap.release()
     cv2.destroyAllWindows()
+
+# Funkcja do wyświetlania szczegółowych informacji o przedmiocie w nowym oknie
+def show_item_details(item_data):
+    item_id, name, category, quantity, location = item_data
+
+    details_window = tk.Toplevel()
+    details_window.title(f"Szczegóły przedmiotu {name}")
+    details_window.geometry("300x200")
+
+    tk.Label(details_window, text=f"ID: {item_id}").pack(pady=5)
+    tk.Label(details_window, text=f"Nazwa: {name}").pack(pady=5)
+    tk.Label(details_window, text=f"Kategoria: {category}").pack(pady=5)
+    tk.Label(details_window, text=f"Ilość: {quantity}").pack(pady=5)
+    tk.Label(details_window, text=f"Lokalizacja: {location}").pack(pady=5)
+
+    tk.Button(details_window, text="Zamknij", command=details_window.destroy).pack(pady=10)
+
 class InventoryApp:
     def __init__(self, root):
         self.root = root
